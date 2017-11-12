@@ -25,4 +25,5 @@ def demo():
         if price is not None and client.print_flight_segments(i):
             print "Trip Cost: " + u"\u20AC" + str(client.get_itinerary_cost(i)) + "\n"
 
+
 demo()

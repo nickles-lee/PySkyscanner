@@ -1,6 +1,7 @@
 from airport import airport_cache
 from airline import airline_cache
 
+
 class FlightSegment:
     def __init__(self,
                  arrival_datetime,

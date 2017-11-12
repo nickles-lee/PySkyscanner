@@ -1,5 +1,6 @@
 airline_cache = {}
 
+
 class Airline:
     def __init__(self, code, dcode, nid, logo, cname):
         self.iataCode = code
