@@ -5,7 +5,11 @@ While this library is lacking in error handling, full coverage of the REST API, 
 
 Simply put your API key into secrets.py, or manually specify it when instantiating your client.
 
+## Files
+* pySkyscanner.py provides a basic test application to orient oneself
+* client.py provides a usable client that will wrap requests to the Skyscanner API, plus getters for relatively non-intuitive response objects
+
 ## Contact
-If you have questions, feel free to raise an issue, and star this if you’ve found it useful. If it’s found useful, I’ll try to clean this up further in my spare time and this to the point where it can be put into a Python package repo.
+If you have questions, feel free to raise an issue or contact me, and star this if you’ve found it useful. If it’s found useful, I’ll try to clean this up further in my spare time and this to the point where it can be put into a Python package repo.
 
 [Skyscanner API Reference](https://skyscanner.github.io/slate/#flights-live-prices)

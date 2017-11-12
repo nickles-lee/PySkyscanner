@@ -148,8 +148,8 @@ class SkyscannerClient:
                                 s['DestinationStation']].iataCode
                 except:
                     print "\n"
-                    return
-            return
+                    return False
+            return True
 
     def get_itinerary_cost(self, itinerary):
         '''
