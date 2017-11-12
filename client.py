@@ -2,48 +2,12 @@ import requests
 import urlparse
 import time
 
+from models.airline import *
+from models.airport import *
+
 BASE_API_URL = "http://partners.api.skyscanner.net"
 DIRECTIONALITY_OUTBOUND = 'Outbound'
 DIRECTIONALITY_INBOUND = 'Inbound'
-
-airport_cache = {}
-airline_cache = {}
-
-
-def get_airport_by_rnid(rnid):
-    if rnid in airport_cache:
-        return airport_cache[rnid]
-
-
-def get_airline_by_rnid(rnid):
-    if rnid in airport_cache:
-        return airport_cache[rnid]
-
-
-def get_iata_airport_by_rnid(rnid):
-    if rnid in airport_cache:
-        return airport_cache[rnid].iataCode
-
-
-def get_iata_airline_by_rnid(rnid):
-    if rnid in airline_cache:
-        return airline_cache[rnid].iataCode
-
-
-def get_airline_logo_by_rnid(rnid):
-    if rnid in airline_cache:
-        return airline_cache[rnid].carrierLogoURL
-
-
-def get_airline_name_by_rnid(rnid):
-    if rnid in airline_cache:
-        return airline_cache[rnid].colloquialName
-
-
-def get_airport_name_by_rnid(rnid):
-    if rnid in airport_cache:
-        return airport_cache[rnid].iataCode
-
 
 class FlightSegment:
     def __init__(self,
@@ -98,24 +62,6 @@ class FlightSet:
                 outstr += (str(s) + "\n")
         outstr += "Trip Cost: " + self.currency + " " + str(self.cost)
         return outstr
-
-
-class Airport:
-    def __init__(self, code, nid, cname, ctype):
-        self.iataCode = code
-        self.rnid = nid
-        self.colloquialName = cname
-        self.contentType = ctype
-
-
-class Airline:
-    def __init__(self, code, dcode, nid, logo, cname):
-        self.iataCode = code
-        self.displayCode = dcode
-        self.rnid = nid
-        self.carrierLogoURL = logo
-        self.colloquialName = cname
-
 
 class SkyscannerClient:
     def __init__(self, api_key):
@@ -190,82 +136,59 @@ class SkyscannerClient:
             return flight_group
 
     def init_search_session(self, country, currency, dep, dest, outdate, indate, cabin):
-        query = build_query_data(country, currency, dep, dest, outdate, indate, cabin)
+        query = self.build_query_data(country, currency, dep, dest, outdate, indate, cabin)
         res = self.get_flight_routes(query)
         populate_airport_cache(res)
         populate_airline_cache(res)
         return res
 
+    # Country is ISO code
+    # Currency is ISO code
+    # Departure is IATA code
+    # Destination is IATA code
+    # Date is YYYY-MM-DD
+    # Cabin is "Economy", "PremiumEconomy", "Business", "First"
+    def build_query_data(self, country, currency, dep, dest, outdate, indate, cabin):
+        data = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json",
+            "country": country,
+            "currency": currency,
+            "locale": "en-GB",
+            "locationSchema": "iata",
+            "grouppricing": "false",
+            "originplace": dep,
+            "destinationplace": dest,
+            "outbounddate": outdate,
+            "inbounddate": indate,
+            "adults": "1",
+            "children": "0",
+            "infants": "0",
+            "cabinclass": cabin}
+        return data
 
-def add_airport_to_cache(airport):
-    airport_cache[airport.rnid] = airport
+    def get_itinerary_cost(self, itinerary):
+        prices = itinerary['PricingOptions']
+        price_sum = 0.0
+        count = 0
+        for i in prices:
+            price_sum += i['Price']
+            count += 1
+        return round(price_sum / count, 2)
+        # print itinerary['OutboundLegId'],itinerary['PricingOptions']
 
+    # Add Endpoint to retrieve DeepLinks
+    # Return first DL
+    def get_deeplink(self, itinerary):
+        for p in itinerary['PricingOptions']:
+            # print "Debug:" + p['DeeplinkUrl']
+            return p['DeeplinkUrl']
 
-def add_airline_to_cache(airline):
-    airline_cache[airline.rnid] = airline
-
-
-def populate_airport_cache(results):
-    airports = results['Places']
-    for c in airports:
-        a = Airport(c['Code'], c['Id'], c['Name'], c['Type'])
-        add_airport_to_cache(a)
-
-
-def populate_airline_cache(results):
-    carriers = results['Carriers']
-    for c in carriers:
-        a = Airline(c['Code'], c['DisplayCode'], c['Id'], c['ImageUrl'], c['Name'])
-        add_airline_to_cache(a)
-
-
-# Note: Postman is a nice extension
-
-# Country is ISO code
-# Currency is ISO code
-# Departure is IATA code
-# Destination is IATA code
-# Date is YYYY-MM-DD
-# Cabin is "Economy", "PremiumEconomy", "Business", "First"
-def build_query_data(country, currency, dep, dest, outdate, indate, cabin):
-    data = {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json",
-        "country": country,
-        "currency": currency,
-        "locale": "en-GB",
-        "locationSchema": "iata",
-        "grouppricing": "false",
-        "originplace": dep,
-        "destinationplace": dest,
-        "outbounddate": outdate,
-        "inbounddate": indate,
-        "adults": "1",
-        "children": "0",
-        "infants": "0",
-        "cabinclass": cabin}
-    return data
+    def get_itineraries(self, result_object):
+        r = result_object['Itineraries']
+        return r
 
 
-def get_itinerary_cost(itinerary):
-    prices = itinerary['PricingOptions']
-    price_sum = 0.0
-    count = 0
-    for i in prices:
-        price_sum += i['Price']
-        count += 1
-    return round(price_sum / count, 2)
-    # print itinerary['OutboundLegId'],itinerary['PricingOptions']
 
 
-# Add Endpoint to retrieve DeepLinks
-# Return first DL
-def get_deeplink(itinerary):
-    for p in itinerary['PricingOptions']:
-        # print "Debug:" + p['DeeplinkUrl']
-        return p['DeeplinkUrl']
 
-
-def get_itineraries(result_object):
-    r = result_object['Itineraries']
-    return r
